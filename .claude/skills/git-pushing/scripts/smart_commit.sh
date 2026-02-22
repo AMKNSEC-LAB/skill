@@ -33,73 +33,58 @@ git add .
 STAGED_FILES=$(git diff --cached --name-only)
 DIFF_STAT=$(git diff --cached --stat)
 
-# Analyze changes to determine commit type
-determine_commit_type() {
+# Pick a random friendly commit message based on changed files
+generate_friendly_message() {
     local files="$1"
+    local num=$2
 
-    # Check for specific patterns
     if echo "$files" | grep -q "test"; then
-        echo "test"
+        local msgs=(
+            "야 테스트 좀 고쳤어 ㅋㅋ"
+            "테스트 코드 건드렸는데 잘 되겠지 뭐"
+            "테스트 살짝 손봤음"
+        )
     elif echo "$files" | grep -qE "\.(md|txt|rst)$"; then
-        echo "docs"
+        local msgs=(
+            "문서 조금 다듬었어"
+            "README 좀 깔끔하게 만들었음"
+            "문서 업뎃했음 ㅎ"
+        )
     elif echo "$files" | grep -qE "package\.json|requirements\.txt|Cargo\.toml"; then
-        echo "chore"
-    elif git diff --cached | grep -qE "^[\+].*fix|^[\+].*bug"; then
-        echo "fix"
-    elif git diff --cached | grep -qE "^[\+].*refactor"; then
-        echo "refactor"
+        local msgs=(
+            "패키지 버전 올렸음"
+            "의존성 좀 정리했어"
+            "라이브러리 업뎃함"
+        )
+    elif git diff --cached | grep -qE "^[\+].*(fix|bug)"; then
+        local msgs=(
+            "버그 잡았다 ㅠㅠ 드디어"
+            "이거 왜 이랬나 했더니 고쳤음"
+            "버그 하나 처리했어"
+        )
+    elif echo "$files" | grep -qE "skill|plugin|agent"; then
+        local msgs=(
+            "skill 이것저것 고쳤어"
+            "skill 살짝 개선함 ㄱㄱ"
+            "기능 조금 손봤음"
+        )
     else
-        echo "feat"
+        local msgs=(
+            "이것저것 좀 바꿨음 ㅋ"
+            "자잘한 거 수정했어"
+            "파일 ${num}개 조졌음 ㅎ"
+            "변경사항 올림 ㄱ"
+        )
     fi
-}
 
-# Analyze files to determine scope
-determine_scope() {
-    local files="$1"
-
-    # Extract directory or component name
-    local scope=$(echo "$files" | head -1 | cut -d'/' -f1)
-
-    # Check for common patterns
-    if echo "$files" | grep -q "plugin"; then
-        echo "plugin"
-    elif echo "$files" | grep -q "skill"; then
-        echo "skill"
-    elif echo "$files" | grep -q "agent"; then
-        echo "agent"
-    elif [ -n "$scope" ] && [ "$scope" != "." ]; then
-        echo "$scope"
-    else
-        echo ""
-    fi
+    local idx=$(( RANDOM % ${#msgs[@]} ))
+    echo "${msgs[$idx]}"
 }
 
 # Generate commit message if not provided
 if [ -z "$1" ]; then
-    COMMIT_TYPE=$(determine_commit_type "$STAGED_FILES")
-    SCOPE=$(determine_scope "$STAGED_FILES")
-
-    # Count files changed
     NUM_FILES=$(echo "$STAGED_FILES" | wc -l | xargs)
-
-    # Generate description based on changes
-    if [ "$COMMIT_TYPE" = "docs" ]; then
-        DESCRIPTION="update documentation"
-    elif [ "$COMMIT_TYPE" = "test" ]; then
-        DESCRIPTION="update tests"
-    elif [ "$COMMIT_TYPE" = "chore" ]; then
-        DESCRIPTION="update dependencies"
-    else
-        DESCRIPTION="update $NUM_FILES file(s)"
-    fi
-
-    # Build commit message
-    if [ -n "$SCOPE" ]; then
-        COMMIT_MSG="${COMMIT_TYPE}(${SCOPE}): ${DESCRIPTION}"
-    else
-        COMMIT_MSG="${COMMIT_TYPE}: ${DESCRIPTION}"
-    fi
-
+    COMMIT_MSG=$(generate_friendly_message "$STAGED_FILES" "$NUM_FILES")
     info "Generated commit message: $COMMIT_MSG"
 else
     COMMIT_MSG="$1"
